@@ -21,6 +21,19 @@ struct gθEM <: Solver
 end
 Base.show(io::IO, alg::gθEM) = print(io, "gθEM: θ=", alg.θ)
 
+
+"""
+Implicit Geometric Euler-Maruyama scheme
+
+Based in the N=1 approximation of the Magnus solution
+where θ refferes to the impliciteness of the scheme
+"""
+struct gθEM2 <: Solver
+    θ::Float64
+end
+Base.show(io::IO, alg::gθEM2) = print(io, "gθEM2: θ=", alg.θ)
+
+
 """
 Geometric Heuns scheme
 

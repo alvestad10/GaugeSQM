@@ -14,7 +14,7 @@ end
 struct Setup
     u0::SU2Matrix
     dt::Float64
-    tspan::Int
+    tspan::Float64
     model::PolyakovChainModel
 end
 
@@ -58,23 +58,28 @@ end
 
 function run_sim(p::Setup,alg::Solver)
 
-
-    
+    Random.seed!(123)
 
     dt = p.dt
     tspan = p.tspan
     β = p.model.β
 
-    NTr = 2
+    NTr = 1
     nrSaves = length(0:dt:tspan)
 
     #manifold_check = zeros(ComplexF64,NTr,nrSaves)
     sol =            zeros(ComplexF64,NTr,nrSaves)
+    sol2 =            zeros(ComplexF64,NTr,nrSaves)
+    x =            zeros(ComplexF64,NTr,nrSaves)
+    y =            zeros(ComplexF64,NTr,nrSaves)
+    z =            zeros(ComplexF64,NTr,nrSaves)
+
+    II = Matrix(Diagonal(ones(2)))
 
     Threads.@threads for tread in 1:NTr
 
     U = copy(p.u0)
-
+    
     A = zeros(ComplexF64,3)
     B = zeros(ComplexF64,3)
     D = zeros(ComplexF64,3)
@@ -83,7 +88,11 @@ function run_sim(p::Setup,alg::Solver)
     for (i,t) in enumerate(0:dt:tspan)
 
         R = im*(β / 2)
+        #R = im*(β*conj(β) / 2)
+        
+        #η = zeros(3)#sqrt(2*dt) .* randn(3)
         η = sqrt(2*dt) .* randn(3)
+        #η = sqrt(2*dt*conj(β)) .* randn(3)
 
         if typeof(alg) == gEM
             #A =  im *( ( dt * R * trT(U,1) + η[1])*T(1) + 
@@ -91,8 +100,13 @@ function run_sim(p::Setup,alg::Solver)
             #           ( dt * R * trT(U,3) + η[3])*T(3) )
 
             A .= (dt*R*trT(U) .+ η)
-            
+
             U = _expi(A)*U
+            
+            # using Cay instad of Exp
+            #A .= 0.5*(dt*R*trT(U) .+ η)
+
+            #U = SU2Matrix(inv(II - hat(A).M))*SU2Matrix((II + hat(A).M))*U
 
             #U = exp(A)*U
         elseif typeof(alg) == gθEM
@@ -110,9 +124,8 @@ function run_sim(p::Setup,alg::Solver)
                 F[div(end,2)+1:end] .= x[div(end,2)+1:end] .- imag(D)
             end
 
-            r = nlsolve(g!, u0, method = :newton,autodiff = :forward)
-
-            U = _expi_complex(r.zero)*U
+            r = nlsolve(g!, u0, method = :newton, autodiff = :forward)
+            U = _expi_complex(r.zero)*U            
         
         elseif typeof(alg) == gHeuns
             A .= (dt*R*trT(U) .+ η)
@@ -138,20 +151,42 @@ function run_sim(p::Setup,alg::Solver)
 
             U = _expi_complex(r.zero)*U
 
-        elseif typeof(alg) == gRK
+        elseif typeof(alg) == gKronfeld
             A .= (dt*R*trT(U) .+ η)
             A .= ((dt/2)*(1+2*dt/6)*R*(trT(_expi(A)*U) + trT(U)) .+ η)
+            U = _expi(A)*U
+        elseif typeof(alg) == gRK15
+
+            ΔZ = 0.5*dt*(η .+ randn(3)*sqrt(2*dt/3))
+
+            A(X) = dt*R*trT(X)
+
+            H1 = 0
+            H2 = (3/4)*A(H1)*dt + (3/2)*ΔZ/dt
+            H3 = 0
+            
+            H̃1 = 0
+            H̃2 = (1/9)*A(H1)*dt + (1/3)*sqrt(dt)
+            H̃3 = (5/9)*A(H1)*dt + (1/3)*A(H2)*dt - (1/3)*sqrt(2*dt)+sqrt(2*dt)
+            H̃4 = A(H1)*dt + (1/3)*A(H2)*dt + A(H3)*dt + sqrt(2*dt) - sqrt(2*dt) + sqrt(2*dt)
+            
+            Ω1 .= ((1/3)*A(H1) + (2/3)*A(H2))*dt +
+                  ((13/4) - (9/4) - (9/4) + (9/4))*η
+            _A .= ((dt/2)*(1+2*dt/6)*R*(trT(_expi(A)*U) + trT(U)) .+ η)
             U = _expi(A)*U
         end
 
         #manifold_check[i] = tr(U*adjoint(U))/2 - 1
         sol[tread,i] = (β/2) * tr(U)
+        
+        x[tread,i] = U.M[1,1]
+        y[tread,i] = U.M[2,1]
 
         #if isnan(sol[i]) return manifold_check[1:i-1], sol[1:i-1] end
     end 
     end
     #return manifold_check, sol
-    return sol
+    return sol, x, y
 end
 
 

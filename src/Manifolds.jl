@@ -7,7 +7,7 @@ abstract type SUNMatrix end
 
 import Base: *, +
 import Base: copy, exp
-import LinearAlgebra: tr, adjoint
+import LinearAlgebra: tr, adjoint, det
 
 const SMatrix2 = SMatrix{2,2,Complex{Real}}
 const SMatrix3 = SMatrix{3,3,Complex{Real}}
@@ -17,6 +17,9 @@ mutable struct SU2Matrix <: SUNMatrix
 end
 
 SU2Matrix(a,b,c,d) = SU2Matrix(SMatrix2(a,b,c,d))
+SU2Matrix(a,b,c) = _expi([a,b,c])
+
+
 *(A::T,B::T) where {T <: SUNMatrix} = T(A.M*B.M)
 *(A::Number,B::T) where {T <: SUNMatrix} = T(A*B.M)
 *(A::T,B::Number) where {T <: SUNMatrix} = T(A.M*B)
@@ -27,6 +30,7 @@ copy(A::T) where {T <: SUNMatrix} = T(A.M)
 exp(A::T) where {T <: SUNMatrix} = T(exp(A.M))
 tr(A::T) where {T <: SUNMatrix} = tr(A.M)
 adjoint(A::T) where {T <: SUNMatrix} = T(adjoint(A.M))
+det(A::T) where {T <: SUNMatrix} = det(A.M)
 
 #const SU2Matrix = SMatrix{2,2,Complex{Float64}}
 #const su2CAlgebra = SVector{6,Float64}

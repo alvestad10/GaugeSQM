@@ -5,7 +5,9 @@ export GaugeFields
 export SUMatrix, SU2Matrix
 
 const SUMatrix{N,L} = SMatrix{N,N,ComplexF64,L}
+const U1Matrix = SUMatrix{1,1}
 const SU2Matrix = SUMatrix{2,4}
+const SU3Matrix = SUMatrix{3,9}
 
 ### Setting up the manifold ####
 abstract type SUn end
@@ -125,7 +127,11 @@ struct LieAlgebraFields{T <: SUn,fType <: Number}
 
     function LieAlgebraFields(fType,NC,NV)
         sutype = SU{NC}
-        NumofBasis = NC^2-1
+        if NC > 1
+            NumofBasis = NC^2-1
+        else
+            NumofBasis = 1
+        end
         #generators = Generator(NC)
         return new{sutype,fType}(zeros(fType,NumofBasis,NV),NC,NV,NumofBasis)
     end
@@ -187,6 +193,11 @@ function muladd!(a::LieAlgebraFields,α,η)
     return
 end
 
+function muladd!(a::LieAlgebraFields,α,b::LieAlgebraFields)
+    @. a.a = α*a.a + b.a
+    return
+end
+
 function gauss_distribution_lie!(p::LieAlgebraFields)
     @inbounds @simd for i=1:p.NV
         p.a[1:div(p.NumOfBasis,2),i] = convert(typeof(p.a),randn(div(p.NumOfBasis,2),1))
@@ -202,10 +213,6 @@ function expiA!(v::SU2GaugeFields, u::SU2AlgebraFields)
     NV=u.NV
     @inbounds @simd for i=1:NV
         
-        #u1 = (u[1,i] + im*u[4,i])/2
-        #u2 = (u[2,i] + im*u[5,i])/2
-        #u3 = (u[3,i] + im*u[6,i])/2
-
         u1 = u[1,i]#/2
         u2 = u[2,i]#/2
         u3 = u[3,i]#/2
@@ -221,10 +228,13 @@ function expiA!(v::SU2GaugeFields, u::SU2AlgebraFields)
                          im*a1 - a2,
                          im*a1 + a2,
                          cR - im*a3)
-        #v[i][1,1] = cos(R) + im*a3
-        #v[i][1,2] = im*a1 + a2
-        #v[i][2,1] = im*a1 - a2
-        #v[i][2,2] = cos(R) - im*a3
+    end
+end
+
+function expiA!(v::U1GaugeFields, u::U1AlgebraFields)   
+    NV=u.NV
+    @inbounds @simd for i=1:NV
+        v[i] = U1Matrix(exp(im*u[1,i]))
     end
 end
 
@@ -309,7 +319,11 @@ function trT!(V,X::SU2Matrix)
     V[3] = (X[1,1] - X[2,2])
 end
 
-function trT!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields{SU{N},eType}) where {N, eType, aType}
+function trT!(V,X::U1Matrix)
+    V[1] = X[1]
+end
+
+function trT!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields{SU{N},eType}) where {N, eType, aType}    
     for j in 1:X.NV
         M::SUMatrix{N} = X[j]
         for i in j+1:X.NV

@@ -2,14 +2,17 @@
 
 
 
-function perform_step!(integrator, cache::gEMCach)
-    @unpack dt, U, alg, p, η = integrator
+function perform_step!(integrator, cache::gEMCache)
+    @unpack dt, U, alg, f, η = integrator
     @unpack V, U_tmp, U_tmp2 = cache    
+    
+    f(V,U,dt,η)
+    
     # Related to the problem at the moment
-    trT!(V,U)
+    #trT!(V,U)
     
     # Generic part of the algorithm not part of the problem    
-    muladd!(V,dt*p,η)
+    #muladd!(V,dt*p,η)
     expiA!(U_tmp2,V)
     mul!(U_tmp,U_tmp2,U)
 
@@ -18,45 +21,45 @@ end
 
 
 
-function perform_step!(integrator, cache::gθEMCach)
-    @unpack dt, U, alg, p, η = integrator
+function perform_step!(integrator, cache::gθEMCache)
+    @unpack dt, U, alg, f, η = integrator
     @unpack U_tmp,U_tmp2, B, D, V, r0 = cache    
-    # Related to the problem at the moment
-    trT!(B,U)
-    @. D.a = B.a
     
-    # Generic part of the algorithm not part of the problem    
-    muladd!(D,dt*p,η)
+    # Calculating the initial value
+    # for the nlsolver 
+    f(D,U,dt,η)
     @. r0 = D.a 
-    #@. r0[1:div(end,2),:] = real(D.a)
-    #@. r0[div(end,2)+1:end,:] = imag(D.a)
-    
-    muladd!(B,dt*p*(1-alg.θ),η)
-    
+
+    if (1-alg.θ) != 0.
+        #@. B.a = D.a
+        #muladd!(B,dt*p*(1-alg.θ),η)
+        f(B,U,dt*(1-alg.θ),η)
+    else
+        @. B.a = η 
+    end
     
     g!(F,x) = begin                
-        #D = ( dt * R .* alg.θ .* trT(_expi(x)*U) .+ B)
         
+        # Convert to GaugeField
         @. V.a = x
-        #V.a .= (@view x[1:div(end,2),:]) + im*(@view x[div(end,2)+1:end,:])
         
+        # Prepare to evaluate drift term
         expiA!(U_tmp2,V)
         mul!(U_tmp,U_tmp2,U)
         
-        trT!(D,U_tmp)
-        muladd!(D,dt*p*alg.θ,B)
+        # Evaluate drift term according to
+        # the model
+        f(D,U_tmp,dt*alg.θ,B)
 
+        # We want to minimize F ("Lie alebra vector")
         @. F = x - D.a 
-        #@. F[1:div(end,2),:] = x[1:div(end,2),:] - real(D.a)
-        #@. F[div(end,2)+1:end,:] = x[div(end,2)+1:end,:] - imag(D.a)
     end
 
-    
+    # Perform the non-linear solve
     r = nlsolve(g!, r0, method = :anderson)#, autodiff = :forward)
 
+    # Evaluate the expoenential 
     @. V.a = r.zero
-    #@. V.a = (@view r.zero[1:div(end,2),:]) + im*(@view r.zero[div(end,2)+1:end,:])
-
     expiA!(U_tmp2,V)
     mul!(U_tmp,U_tmp2,U)
 

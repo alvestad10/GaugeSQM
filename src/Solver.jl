@@ -11,20 +11,20 @@ Based in the N=1 approximation of the Magnus solution
 struct gEM <: Solver end
 Base.show(io::IO, alg::gEM) = print(io, "gEM")
 
-struct gEMCach{T <: SUn,eType,lType} <: Cache
+struct gEMCache{T <: SUn,eType,lType} <: Cache
     U_tmp::GaugeFields{T,eType}
     U_tmp2::GaugeFields{T,eType}
     V::LieAlgebraFields{T,lType}
 end
 
-function get_cach(integrator,alg::gEM)
+function get_cache(integrator,alg::gEM)
     @unpack U = integrator
 
     U_tmp = similar(U)
     U_tmp2 = similar(U)
     V = LieAlgebraFields(ComplexF64,U.NC,U.NV)
 
-    gEMCach(U_tmp,U_tmp2,V)    
+    gEMCache(U_tmp,U_tmp2,V)    
 end
 
 """
@@ -38,7 +38,7 @@ struct gθEM <: Solver
 end
 Base.show(io::IO, alg::gθEM) = print(io, "gθEM: θ=", alg.θ)
 
-struct gθEMCach{T <: SUn,eType,lType,r0Type} <: Cache
+struct gθEMCache{T <: SUn,eType,lType,r0Type} <: Cache
     U_tmp::GaugeFields{T,eType}
     U_tmp2::GaugeFields{T,eType}
     B::LieAlgebraFields{T,lType}
@@ -47,7 +47,7 @@ struct gθEMCach{T <: SUn,eType,lType,r0Type} <: Cache
     r0::r0Type
 end
 
-function get_cach(integrator,alg::gθEM)
+function get_cache(integrator,alg::gθEM)
     @unpack U = integrator
 
     U_tmp = similar(U)
@@ -59,7 +59,7 @@ function get_cach(integrator,alg::gθEM)
     r0 = D.a
     #r0 = zeros(Float64,2*(U.NC^2-1),U.NV)
 
-    gθEMCach(U_tmp,U_tmp2,V,B,D,r0)    
+    gθEMCache(U_tmp,U_tmp2,V,B,D,r0)    
 end
 
 """

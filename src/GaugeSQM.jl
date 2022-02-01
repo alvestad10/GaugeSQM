@@ -11,52 +11,45 @@ include("GaugeFields.jl")
 include("Solver.jl")
 include("plotHelperFuncitons.jl")
 include("Model.jl")
+include("GaugeCooling.jl")
 include("Integrator.jl")
 include("Perform_step.jl")
-
 
 
 export solve
 
 
 
-function solve(opts::Problem,alg::Solver)
+function solve(opts::Problem,alg::Solver,regs::Regulators)
 
-    @unpack U0, dt, tspan, model, p, NTr = opts
-
-
-    
+    @unpack U0, dt, tspan, model, NTr = opts
     
     Random.seed!(123)
     
-    #@unpack dt, tspan, model, NTr = opts
-    β = model.β
     
     nrSaves = length(0:dt:tspan)
-    
     sol = zeros(ComplexF64,NTr,nrSaves+1)
     
     Threads.@threads for tread in 1:NTr
     #for tread in 1:NTr
         
-        integrator = Integrator(U0,dt,p,opts,alg)
-        algCach = get_cach(integrator,alg)
+        integrator = Integrator(U0,dt,opts,alg,regs)
+        algCache = get_cache(integrator,alg)
+        regsCache = get_cache(integrator,regs)
 
 
-        sol[tread,1] = (β/2) * tr(integrator.U)
+        sol[tread,1] = (model.β/2) * tr(integrator.U)
 
         for (i,t) in enumerate(0:dt:tspan)
             
             num_of_basis = integrator.U.NC > 1 ? integrator.U.NC^2-1 : 1
             integrator.η = sqrt(2*dt) .* randn(num_of_basis,integrator.U.NV)
-            perform_step!(integrator,algCach)
+            perform_step!(integrator,algCache)
             
-        
-            sol[tread,i+1] = (β/2) * tr(integrator.U)
+            GaugeCoolingUpdate!(integrator,regsCache)
             
-
-            #if isnan(sol[i]) return manifold_check[1:i-1], sol[1:i-1] end
-    
+            sol[tread,i+1] = (model.β/2) * tr(integrator.U)
+            
         end
     end
     return sol

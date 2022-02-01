@@ -2,17 +2,88 @@
 abstract type model end
 
 """
-Testing docstring
+Polyakov chain model; 1-dimensional
 """
-struct PolyakovChainModel{T <: SUn,βType} <: model
+struct PolyakovChainModel{T <: SUn,βType,β2Type} <: model
     β::βType
     N::Integer
+    κ::Float64
+    μ::Float64
+    β₁::β2Type
+    β₂::β2Type
 end
 
 
-function PolyakovChainProblem(sutype::Type{SU{N}},dt,tspan,β,NLinks;NTr=1) where N
-    model = PolyakovChainModel{sutype,typeof(β)}(β,NLinks)
+
+
+function f_chain(V::U1AlgebraFields,U::GaugeFields{U1,eType},dt,η,p::PolyakovChainModel{U1,βType}) where {eType,βType}
+    for j in 1:U.NV
+        M::U1Matrix = U[j]
+        for i in vcat(j+1:U.NV, 1:j-1)
+            M *= U[i]
+        end
+
+        MInv::U1Matrix = inv(U[j])
+        for i in vcat(j-1:-1:1, U.NV:-1:j+1)
+            MInv *= inv(U[i])
+        end
+
+        trT!(view(V.a,:,j),p.β₁*M + p.β₂*MInv)
+    end
+    
+    trT!(V,U)
+    muladd!(V,dt,η)
+end
+
+function f_chain(V::SU2AlgebraFields,U::GaugeFields{SU2,eType},dt,η,p::PolyakovChainModel{SU2,βType}) where {eType,βType}
+    trT!(V,U)
+    muladd!(V,dt*im*(p.β/2),η)
+end
+
+function f_chain(V::SU3AlgebraFields,U::GaugeFields{SU3,eType},dt,η,p::PolyakovChainModel{SU3,βType}) where {eType,βType}
+    for j in 1:U.NV
+        M::SU3Matrix = U[j]
+        for i in vcat(j+1:U.NV, 1:j-1)
+            M *= U[i]
+        end
+
+        MInv::SU3Matrix = inv(U[j])
+        for i in vcat(j-1:-1:1, U.NV:-1:j+1)
+            MInv *= inv(U[i])
+        end
+
+        trT!(view(V.a,:,j),p.β₁*M + p.β₂*MInv)
+    end
+    
+    trT!(V,U)
+    muladd!(V,dt,η)
+end
+
+"""
+    Setting up the Polyakov chain model in a problem that can be used in the solve method
+
+    $$S = \frac{β}{2} Tr[\sum_i U_i]$$
+    $$S = Tr[\sum_i U_i + (β + κe^{-\mu})(\sum_i U)^{-1}]$$
+
+    sutype: U1, SU2, SU3, or SU{N}
+    dt: Langevin-step size
+    tspan: Simulate in langevin-time 0:dt:tspan
+    β: \beta value of the model
+        For SU(2) this is the only parameter you need to set,
+        for SU(3) you need to give κ and μ
+"""
+function PolyakovChainProblem(sutype::Type{SU{N}},dt,tspan,β,NLinks;NTr=1,κ=0.,μ=0.) where N
+    if N == 2 || N == 1
+        model = PolyakovChainModel{sutype,typeof(β),typeof(β)}(β,NLinks,0.,0.,0.,0.)
+    else
+        β₁ = β + κ*exp(μ)
+        β₂ = β + κ*exp(-μ)
+        model = PolyakovChainModel{sutype,typeof(β),typeof(β₁)}(β,NLinks,κ,μ,β₁,β₂)
+    end
+    
     u0 = GaugeSQM.IdentityGauges(N,NLinks)
-    p = im*(β/2)
-    return Problem(u0,dt,tspan,model,NTr,p)
+    
+    f(V,U,dt,η) = f_chain(V,U,dt,η,model)
+
+    return Problem(u0,dt,tspan,model,NTr,f)
 end

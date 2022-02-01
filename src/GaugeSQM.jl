@@ -20,7 +20,7 @@ export solve
 
 
 
-function solve(opts::Problem,alg::Solver,regs::Regulators)
+function solve(opts::Problem,alg::Solver,regs::Regulators; adaptive=false, ad_κ=5e-4, ad_p=2)
 
     @unpack U0, dt, tspan, model, NTr = opts
     
@@ -42,8 +42,12 @@ function solve(opts::Problem,alg::Solver,regs::Regulators)
 
         for (i,t) in enumerate(0:dt:tspan)
             
+            if adaptive
+                adaptive_stepsize!(integrator, algCache; κ=ad_κ, p=ad_p)
+            end
+
             num_of_basis = integrator.U.NC > 1 ? integrator.U.NC^2-1 : 1
-            integrator.η = sqrt(2*dt) .* randn(num_of_basis,integrator.U.NV)
+            integrator.η = sqrt(2*integrator.dt) .* randn(num_of_basis,integrator.U.NV)
             perform_step!(integrator,algCache)
             
             GaugeCoolingUpdate!(integrator,regsCache)

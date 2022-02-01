@@ -111,14 +111,14 @@ function GaugeCoolingUpdate!(integrator,cache::NoGaugeCoolingCache) end
 
 function GaugeCoolingUpdate!(integrator,cache::GaugeCoolingCache)
     
-    @unpack U, Regulators = integrator
+    @unpack U, dt, Regulators = integrator
     @unpack GC = Regulators
     
     for i in 1:GC.N
         if typeof(GC) == GaugeCoolingAdaptive
-            α = adaptiveUpdateGCParameter(GC,cache,integrator)
+            α = dt*adaptiveUpdateGCParameter(GC,cache,integrator)
         elseif typeof(GC) == GaugeCooling
-            α = GC.α
+            α = dt*GC.α
         end
         GaugeCoolingUpdate!(U,cache; α=α)
     end

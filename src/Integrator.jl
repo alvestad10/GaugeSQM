@@ -1,13 +1,14 @@
 """
     Setup of the simulation
 """
-struct Problem{uType,tType,modelT <: model, fType}
+struct Problem{uType,tType,modelT <: model, fType, oType}
     U0::uType
     dt::Float64
     tspan::tType
     model::modelT
     NTr::Integer
     f::fType
+    observable::oType
 end
 
 """

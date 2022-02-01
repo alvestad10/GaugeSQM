@@ -57,6 +57,8 @@ function Base.copy(x::GaugeFields)
     return S
 end
 
+Base.iterate(S::GaugeFields, state=1) = state > S.NV ? nothing : (S[state], state+1)
+
 function substitute!(a::GaugeFields{SU{NC},eType},b::GaugeFields{SU{NC},eType}) where {NC,eType}
     a.g .= b.g
     return
@@ -137,6 +139,10 @@ struct LieAlgebraFields{T <: SUn,fType <: Number}
     end
 end
 
+function LieAlgebraFieldsFromLink(U::GaugeFields{SU{N},eType}) where {N,eType}
+    return LieAlgebraFields(eType,N,U.NV)
+end
+
 const U1AlgebraFields{T} = LieAlgebraFields{U1,T}
 const SU2AlgebraFields{T} = LieAlgebraFields{SU2,T}
 const SU3AlgebraFields{T} = LieAlgebraFields{SU3,T}
@@ -152,6 +158,9 @@ end
 function Base.similar(x::LieAlgebraFields)
     return LieAlgebraFields(eltype(x.a),x.NC,x.NV)
 end
+
+Base.iterate(S::LieAlgebraFields, state=1) = state > S.NV ? nothing : (S[:,state], state+1)
+
 
 #function GaugeFields.substitute!(x::LieAlgebraFields,pwork)
 #    n1,n2 = size(x.a)
@@ -205,9 +214,69 @@ function gauss_distribution_lie!(p::LieAlgebraFields)
     return
 end
 
+const sr3 = sqrt(3)
+const sr3i = 1/sr3
+const sr3i2 = 2*sr3i
 
 const pi23 = 2pi/3
 const tinyvalue =1e-100
+
+function expiA!(v::SU3GaugeFields, u::SU3AlgebraFields)   
+    NV=u.NV
+    @inbounds @simd for i=1:NV
+        
+        u1 = u[1,i]#/2
+        u2 = u[2,i]#/2
+        u3 = u[3,i]#/2
+        u4 = u[4,i]#/2
+        u5 = u[5,i]#/2
+        u6 = u[6,i]#/2
+        u7 = u[7,i]#/2
+        u8 = u[8,i]#/2
+
+        M = SU3Matrix(u3 + sr3i*u8,
+                      u1 + im*u2,
+                      u4 + im*u5,
+                      u1 - im*u2,
+                     -u3 + sr3i*u8,
+                      u6 + im*u7,
+                      u4 - im*u5,
+                      u6 - im*u7,
+                      -2*u8*sr3i)
+
+
+        v[i] = exp(im*M)
+    end
+end
+
+function expA!(v::SU3GaugeFields, u::SU3AlgebraFields)   
+    NV=u.NV
+    @inbounds @simd for i=1:NV
+        
+        u1 = u[1,i]#/2
+        u2 = u[2,i]#/2
+        u3 = u[3,i]#/2
+        u4 = u[4,i]#/2
+        u5 = u[5,i]#/2
+        u6 = u[6,i]#/2
+        u7 = u[7,i]#/2
+        u8 = u[8,i]#/2
+
+        M = SU3Matrix(u3 + sr3i*u8,
+                      u1 + im*u2,
+                      u4 + im*u5,
+                      u1 - im*u2,
+                     -u3 + sr3i*u8,
+                      u6 + im*u7,
+                      u4 - im*u5,
+                      u6 - im*u7,
+                      -2*u8*sr3i)
+
+
+        v[i] = exp(M)
+    end
+end
+
 
 function expiA!(v::SU2GaugeFields, u::SU2AlgebraFields)   
     NV=u.NV
@@ -231,6 +300,21 @@ function expiA!(v::SU2GaugeFields, u::SU2AlgebraFields)
     end
 end
 
+function expA!(v::SU2GaugeFields, u::SU2AlgebraFields)   
+    NV=u.NV
+    @inbounds @simd for i=1:NV
+        
+        u1 = u[1,i]#/2
+        u2 = u[2,i]#/2
+        u3 = u[3,i]#/2
+
+        v[i] = exp(SU2Matrix(u3,
+                             u1 + im*u2,
+                             u1 - im*u2,
+                           - u3))
+    end
+end
+
 function expiA!(v::U1GaugeFields, u::U1AlgebraFields)   
     NV=u.NV
     @inbounds @simd for i=1:NV
@@ -238,14 +322,17 @@ function expiA!(v::U1GaugeFields, u::U1AlgebraFields)
     end
 end
 
+function expA!(v::U1GaugeFields, u::U1AlgebraFields)   
+    NV=u.NV
+    @inbounds @simd for i=1:NV
+        v[i] = U1Matrix(exp(u[1,i]))
+    end
+end
 
 
 
 
 
-const sr3 = sqrt(3)
-const sr3i = 1/sr3
-const sr3i2 = 2*sr3i
 
 function Gauge2Lie!(c::SU3AlgebraFields,x::SU3GaugeFields)
     NV = x.NV
@@ -312,6 +399,21 @@ function trT(X::SU2Matrix)
         im*(X[1,2] - X[2,1]),
             X[1,1] - X[2,2]]
 end
+
+function trT!(V,X::SU3Matrix)
+    V[1] = (X[2,1] + X[1,2])
+    V[2] = im*(X[1,2] - X[2,1])
+    V[3] = (X[1,1] - X[2,2])
+    
+    V[4] = (X[3,1] + X[2,3])
+    V[5] = im*(X[1,3] - X[3,1])
+    
+    V[6] = (X[3,2] + X[2,3])
+    V[7] = im*(X[2,3] - X[3,2])
+    
+    V[8] = sr3i*(X[1,1] + X[2,2] - 2*X[3,3])
+end
+
 
 function trT!(V,X::SU2Matrix)
     V[1] = (X[2,1] + X[1,2])

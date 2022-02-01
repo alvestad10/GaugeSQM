@@ -75,7 +75,7 @@ end
 
 
 
-"GC drift"
+"GC drift for SU(2)"
 function GC_drift!(V::LieAlgebraFields{SU2,aType},V2::LieAlgebraFields{SU2,aType},U::GaugeFields{SU2,eType}) where {eType,aType}
     for j in 1:U.NV
         jm1 = j-1 == 0 ? U.NV : j-1
@@ -83,6 +83,17 @@ function GC_drift!(V::LieAlgebraFields{SU2,aType},V2::LieAlgebraFields{SU2,aType
         
         jp1 = j+1 == U.NV + 1  ? 1 : j+1
         trT!(view(V2.a,:,j),U[jp1]*adjoint(U[jp1]) - adjoint(U[j])*U[j])
+    end
+end
+
+"GC drift for SU(3)"
+function GC_drift!(V::LieAlgebraFields{SU3,aType},V2::LieAlgebraFields{SU3,aType},U::GaugeFields{SU3,eType}) where {eType,aType}
+    for j in 1:U.NV
+        jm1 = j-1 == 0 ? U.NV : j-1
+        trT!(view(V.a,:,j),U[j]*adjoint(U[j]) - adjoint(U[jm1])*U[jm1] - inv(adjoint(U[j]))*inv(U[j]) + inv(adjoint(U[jm1]))*inv(U[jm1]))
+        
+        jp1 = j+1 == U.NV + 1  ? 1 : j+1
+        trT!(view(V2.a,:,j),U[jp1]*adjoint(U[jp1]) - adjoint(U[j])*U[j] - inv(adjoint(U[jp1]))*inv(U[jp1]) + inv(adjoint(U[j]))*inv(U[j]))
     end
 end
 

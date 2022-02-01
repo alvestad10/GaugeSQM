@@ -449,6 +449,14 @@ function tr(X::GaugeFields{SU{N},eType}) where {N, eType}
     return tr(M)
 end
 
+function trInv(X::GaugeFields{SU{N},eType}) where {N, eType}
+    M = inv(X[X.NV])
+    for i in X.NV-1:-1:1
+        M *= inv(X[i])
+    end
+    return tr(M)
+end
+
 #=
 
 

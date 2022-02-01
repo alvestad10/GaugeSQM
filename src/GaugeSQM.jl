@@ -11,7 +11,7 @@ include("GaugeFields.jl")
 include("Solver.jl")
 include("plotHelperFuncitons.jl")
 include("Model.jl")
-include("GaugeCooling.jl")
+include("Regulators.jl")
 include("Integrator.jl")
 include("Perform_step.jl")
 
@@ -37,8 +37,8 @@ function solve(opts::Problem,alg::Solver,regs::Regulators)
         algCache = get_cache(integrator,alg)
         regsCache = get_cache(integrator,regs)
 
-
-        sol[tread,1] = (model.β/2) * tr(integrator.U)
+        
+        sol[tread,1] = opts.observable(integrator.U)
 
         for (i,t) in enumerate(0:dt:tspan)
             
@@ -48,7 +48,7 @@ function solve(opts::Problem,alg::Solver,regs::Regulators)
             
             GaugeCoolingUpdate!(integrator,regsCache)
             
-            sol[tread,i+1] = (model.β/2) * tr(integrator.U)
+            sol[tread,i+1] = opts.observable(integrator.U)
             
         end
     end

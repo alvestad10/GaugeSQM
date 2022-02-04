@@ -19,9 +19,11 @@ struct NoDynamicStabilization <: AbstractDynamicStabilization end
 
 ## GaugeCooling
 struct NoGaugeCooling <: AbstractGaugeCooling end
-struct NoGaugeCoolingCache <: Cache end
+#struct NoGaugeCoolingCache <: Cache end
 
-get_cache(integrator,regs::Regulators{NoGaugeCooling,NoDynamicStabilization}) = NoGaugeCoolingCache()
+struct NoRegulatorCache <: Cache end
+get_cache(integrator,regs::Regulators{NoGaugeCooling,NoDynamicStabilization}) = NoRegulatorCache()
+#get_cache(integrator,regs::Regulators{NoGaugeCooling,NoDynamicStabilization}) = NoGaugeCoolingCache()
 
 struct GaugeCooling <: AbstractGaugeCooling
     α::Float64
@@ -29,9 +31,9 @@ struct GaugeCooling <: AbstractGaugeCooling
 end
 
 struct GaugeCoolingCache{T <: SUn,eType,lType} <: Cache
-    U2::GaugeFields{T,eType}
-    U3::GaugeFields{T,eType}
-    U4::GaugeFields{T,eType}
+    U2::GaugeFields_1D{T,eType}
+    U3::GaugeFields_1D{T,eType}
+    U4::GaugeFields_1D{T,eType}
     V1::LieAlgebraFields{T,lType}
     V2::LieAlgebraFields{T,lType}
 end
@@ -76,7 +78,7 @@ end
 
 
 "GC drift for SU(2)"
-function GC_drift!(V::LieAlgebraFields{SU2,aType},V2::LieAlgebraFields{SU2,aType},U::GaugeFields{SU2,eType}) where {eType,aType}
+function GC_drift!(V::LieAlgebraFields{SU2,aType},V2::LieAlgebraFields{SU2,aType},U::GaugeFields_1D{SU2,eType}) where {eType,aType}
     for j in 1:U.NV
         jm1 = j-1 == 0 ? U.NV : j-1
         trT!(view(V.a,:,j),U[j]*adjoint(U[j]) - adjoint(U[jm1])*U[jm1])
@@ -87,7 +89,7 @@ function GC_drift!(V::LieAlgebraFields{SU2,aType},V2::LieAlgebraFields{SU2,aType
 end
 
 "GC drift for SU(3)"
-function GC_drift!(V::LieAlgebraFields{SU3,aType},V2::LieAlgebraFields{SU3,aType},U::GaugeFields{SU3,eType}) where {eType,aType}
+function GC_drift!(V::LieAlgebraFields{SU3,aType},V2::LieAlgebraFields{SU3,aType},U::GaugeFields_1D{SU3,eType}) where {eType,aType}
     for j in 1:U.NV
         jm1 = j-1 == 0 ? U.NV : j-1
         trT!(view(V.a,:,j),U[j]*adjoint(U[j]) - adjoint(U[jm1])*U[jm1] - inv(adjoint(U[j]))*inv(U[j]) + inv(adjoint(U[jm1]))*inv(U[jm1]))
@@ -126,7 +128,7 @@ function GaugeCoolingUpdate!(integrator,cache::GaugeCoolingCache)
 end
 
 
-function GaugeCoolingUpdate!(U::GaugeFields{SU{N},eType},cache::GaugeCoolingCache; α = 0.001) where {N,eType}
+function GaugeCoolingUpdate!(U::GaugeFields_1D{SU{N},eType},cache::GaugeCoolingCache; α = 0.001) where {N,eType}
     
     @unpack U2, U3, U4, V1, V2 = cache
 

@@ -23,7 +23,7 @@ mutable struct Integrator{uType, fType, ηType ,S<:Solver,R<:Regulators}
     alg::S
     Regulators::R
 
-    function Integrator(U0::uType,dt,opts::Problem,alg::algType, regs::R) where {uType <: GaugeFields, algType, R <: Regulators}
+    function Integrator(U0::uType,dt,opts::Problem,alg::algType, regs::R) where {uType <: AbstractGaugeFields, algType, R <: Regulators}
         @unpack f = opts
         
         U = copy(U0)

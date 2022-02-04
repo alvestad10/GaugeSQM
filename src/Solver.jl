@@ -12,8 +12,8 @@ struct gEM <: Solver end
 Base.show(io::IO, alg::gEM) = print(io, "gEM")
 
 struct gEMCache{T <: SUn,eType,lType} <: Cache
-    U_tmp::GaugeFields{T,eType}
-    U_tmp2::GaugeFields{T,eType}
+    U_tmp::GaugeFields_1D{T,eType}
+    U_tmp2::GaugeFields_1D{T,eType}
     V::LieAlgebraFields{T,lType}
 end
 
@@ -39,8 +39,8 @@ end
 Base.show(io::IO, alg::gθEM) = print(io, "gθEM: θ=", alg.θ)
 
 struct gθEMCache{T <: SUn,eType,lType,r0Type} <: Cache
-    U_tmp::GaugeFields{T,eType}
-    U_tmp2::GaugeFields{T,eType}
+    U_tmp::GaugeFields_1D{T,eType}
+    U_tmp2::GaugeFields_1D{T,eType}
     B::LieAlgebraFields{T,lType}
     D::LieAlgebraFields{T,lType}
     V::LieAlgebraFields{T,lType}

@@ -1,7 +1,7 @@
 using StaticArrays
 
 export U1, SU2, SU3
-export GaugeFields
+export GaugeFields_1D
 export SUMatrix, SU2Matrix
 
 const SUMatrix{N,L} = SMatrix{N,N,ComplexF64,L}
@@ -19,13 +19,15 @@ const SU2 = SU{2}
 const SU3 = SU{3}
 
 
+abstract type AbstractGaugeFields end
+
 ###### 1D Gauge field #####
-struct GaugeFields{T <: SUn, eType} 
+struct GaugeFields_1D{T <: SUn, eType} <: AbstractGaugeFields
     g::Array{eType}
     NC::Int64
     NV::Int64
 
-    function GaugeFields(NC,NV) 
+    function GaugeFields_1D(NC,NV) 
         sutype = SU{NC}
         g = zeros(SUMatrix{NC,NC^2},NV)
         eType = eltype(g)
@@ -33,38 +35,38 @@ struct GaugeFields{T <: SUn, eType}
     end
 end
 
-const U1GaugeFields  = GaugeFields{U1}
-const SU2GaugeFields  = GaugeFields{SU2}
-const SU3GaugeFields  = GaugeFields{SU3}
-const SUNGaugeFields{N}  = GaugeFields{SU{N}}
+const U1GaugeFields_1D  = GaugeFields_1D{U1}
+const SU2GaugeFields_1D  = GaugeFields_1D{SU2}
+const SU3GaugeFields_1D  = GaugeFields_1D{SU3}
+const SUNGaugeFields_1D{N}  = GaugeFields_1D{SU{N}}
 
 
-function Base.setindex!(x::GaugeFields{T,eType},v,i) where {T <: SUn, eType} 
+function Base.setindex!(x::GaugeFields_1D{T,eType},v,i) where {T <: SUn, eType} 
     x.g[i] = v
 end
 
-function Base.getindex(x::GaugeFields,i)
+function Base.getindex(x::GaugeFields_1D,i)
     return x.g[i]
 end
 
-function Base.similar(x::GaugeFields) 
-    return GaugeFields(x.NC,x.NV)
+function Base.similar(x::GaugeFields_1D) 
+    return GaugeFields_1D(x.NC,x.NV)
 end
 
-function Base.copy(x::GaugeFields)
+function Base.copy(x::GaugeFields_1D)
     S = similar(x)
     S.g .= copy(x.g)
     return S
 end
 
-Base.iterate(S::GaugeFields, state=1) = state > S.NV ? nothing : (S[state], state+1)
+Base.iterate(S::GaugeFields_1D, state=1) = state > S.NV ? nothing : (S[state], state+1)
 
-function substitute!(a::GaugeFields{SU{NC},eType},b::GaugeFields{SU{NC},eType}) where {NC,eType}
+function substitute!(a::GaugeFields_1D{SU{NC},eType},b::GaugeFields_1D{SU{NC},eType}) where {NC,eType}
     a.g .= b.g
     return
 end
 
-function clear!(a::GaugeFields{T,eType}) where {T <: SUn, eType}
+function clear!(a::GaugeFields_1D{T,eType}) where {T <: SUn, eType}
     @. a.g = zero(eType)
     return 
 end
@@ -72,15 +74,15 @@ end
 
 identity(::SUMatrix{N,L}) where {N,L} = SUMatrix{N,L}(Diagonal(ones(N)))
 identity(::Type{SUMatrix{N,L}}) where {N,L} = SUMatrix{N,L}(Diagonal(ones(N)))
-identity(::GaugeFields{SU{N},eType}) where {N,eType} = SUMatrix{N,N^2}(Diagonal(ones(N)))
+identity(::GaugeFields_1D{SU{N},eType}) where {N,eType} = SUMatrix{N,N^2}(Diagonal(ones(N)))
 
-function identity!(a::GaugeFields{T,eType}) where {T <: SUn, eType}
+function identity!(a::GaugeFields_1D{T,eType}) where {T <: SUn, eType}
     @. a.g = identity(eType)
     return 
 end
 
 function IdentityGauges(NC,NV)
-    U = GaugeFields(NC,NV)
+    U = GaugeFields_1D(NC,NV)
     identity!(U)
     return U
 end
@@ -89,7 +91,7 @@ end
 
 
 function RandomGauges(NC,NV)
-    U = GaugeFields(NC,NV)
+    U = GaugeFields_1D(NC,NV)
     A = LieAlgebraFields(Float64,NC,NV)
     
     gauss_distribution_lie!(A)
@@ -98,7 +100,7 @@ function RandomGauges(NC,NV)
     return U
 end
 
-function LinearAlgebra.mul!(c::GaugeFields{T,eType},a::GaugeFields{T,eType}, b::GaugeFields{T,eType}) where {T <: SUn, eType}
+function LinearAlgebra.mul!(c::GaugeFields_1D{T,eType},a::GaugeFields_1D{T,eType}, b::GaugeFields_1D{T,eType}) where {T <: SUn, eType}
     @. c.g = a.g * b.g
     return
 end
@@ -139,7 +141,7 @@ struct LieAlgebraFields{T <: SUn,fType <: Number}
     end
 end
 
-function LieAlgebraFieldsFromLink(U::GaugeFields{SU{N},eType}) where {N,eType}
+function LieAlgebraFieldsFromLink(U::GaugeFields_1D{SU{N},eType}) where {N,eType}
     return LieAlgebraFields(eType,N,U.NV)
 end
 
@@ -221,7 +223,7 @@ const sr3i2 = 2*sr3i
 const pi23 = 2pi/3
 const tinyvalue =1e-100
 
-function expiA!(v::SU3GaugeFields, u::SU3AlgebraFields)   
+function expiA!(v::SU3GaugeFields_1D, u::SU3AlgebraFields)   
     NV=u.NV
     @inbounds @simd for i=1:NV
         
@@ -249,7 +251,7 @@ function expiA!(v::SU3GaugeFields, u::SU3AlgebraFields)
     end
 end
 
-function expA!(v::SU3GaugeFields, u::SU3AlgebraFields)   
+function expA!(v::SU3GaugeFields_1D, u::SU3AlgebraFields)   
     NV=u.NV
     @inbounds @simd for i=1:NV
         
@@ -278,7 +280,7 @@ function expA!(v::SU3GaugeFields, u::SU3AlgebraFields)
 end
 
 
-function expiA!(v::SU2GaugeFields, u::SU2AlgebraFields)   
+function expiA!(v::SU2GaugeFields_1D, u::SU2AlgebraFields)   
     NV=u.NV
     @inbounds @simd for i=1:NV
         
@@ -300,7 +302,7 @@ function expiA!(v::SU2GaugeFields, u::SU2AlgebraFields)
     end
 end
 
-function expA!(v::SU2GaugeFields, u::SU2AlgebraFields)   
+function expA!(v::SU2GaugeFields_1D, u::SU2AlgebraFields)   
     NV=u.NV
     @inbounds @simd for i=1:NV
         
@@ -315,14 +317,14 @@ function expA!(v::SU2GaugeFields, u::SU2AlgebraFields)
     end
 end
 
-function expiA!(v::U1GaugeFields, u::U1AlgebraFields)   
+function expiA!(v::U1GaugeFields_1D, u::U1AlgebraFields)   
     NV=u.NV
     @inbounds @simd for i=1:NV
         v[i] = U1Matrix(exp(im*u[1,i]))
     end
 end
 
-function expA!(v::U1GaugeFields, u::U1AlgebraFields)   
+function expA!(v::U1GaugeFields_1D, u::U1AlgebraFields)   
     NV=u.NV
     @inbounds @simd for i=1:NV
         v[i] = U1Matrix(exp(u[1,i]))
@@ -334,7 +336,7 @@ end
 
 
 
-function Gauge2Lie!(c::SU3AlgebraFields,x::SU3GaugeFields)
+function Gauge2Lie!(c::SU3AlgebraFields,x::SU3GaugeFields_1D)
     NV = x.NV
     
     for i=1:NV
@@ -363,7 +365,7 @@ function Gauge2Lie!(c::SU3AlgebraFields,x::SU3GaugeFields)
 end
 
 
-function Gauge2Lie!(c::SU2AlgebraFields,x::SU2GaugeFields)
+function Gauge2Lie!(c::SU2AlgebraFields,x::SU2GaugeFields_1D)
     NV = x.NV
 
     for i=1:NV
@@ -381,7 +383,7 @@ function Gauge2Lie!(c::SU2AlgebraFields,x::SU2GaugeFields)
 end
 
 
-function Gauge2Lie!(c::U1AlgebraFields,x::U1GaugeFields)
+function Gauge2Lie!(c::U1AlgebraFields,x::U1GaugeFields_1D)
     NV = c.NV
 
     for i=1:NV
@@ -425,7 +427,7 @@ function trT!(V,X::U1Matrix)
     V[1] = X[1]
 end
 
-function trT!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields{SU{N},eType}) where {N, eType, aType}    
+function trT!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields_1D{SU{N},eType}) where {N, eType, aType}    
     for j in 1:X.NV
         M::SUMatrix{N} = X[j]
         for i in j+1:X.NV
@@ -441,7 +443,7 @@ function trT!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields{SU{N},eType}) whe
     return V 
 end
 
-function tr(X::GaugeFields{SU{N},eType}) where {N, eType}
+function tr(X::GaugeFields_1D{SU{N},eType}) where {N, eType}
     M = X[1]
     for i in 2:X.NV
         M *= X[i]
@@ -449,7 +451,7 @@ function tr(X::GaugeFields{SU{N},eType}) where {N, eType}
     return tr(M)
 end
 
-function trInv(X::GaugeFields{SU{N},eType}) where {N, eType}
+function trInv(X::GaugeFields_1D{SU{N},eType}) where {N, eType}
     M = inv(X[X.NV])
     for i in X.NV-1:-1:1
         M *= inv(X[i])

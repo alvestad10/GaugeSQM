@@ -16,7 +16,7 @@ end
 
 
 
-function f_chain(V::U1AlgebraFields,U::GaugeFields{U1,eType},dt,η,p::PolyakovChainModel{U1,βType}) where {eType,βType}
+function f_chain(V::U1AlgebraFields,U::GaugeFields_1D{U1,eType},dt,η,p::PolyakovChainModel{U1,βType}) where {eType,βType}
     for j in 1:U.NV
         M::U1Matrix = U[j]
         for i in vcat(j+1:U.NV, 1:j-1)
@@ -34,12 +34,12 @@ function f_chain(V::U1AlgebraFields,U::GaugeFields{U1,eType},dt,η,p::PolyakovCh
     muladd!(V,-im*dt,η)
 end
 
-function f_chain(V::SU2AlgebraFields,U::GaugeFields{SU2,eType},dt,η,p::PolyakovChainModel{SU2,βType}) where {eType,βType}
+function f_chain(V::SU2AlgebraFields,U::GaugeFields_1D{SU2,eType},dt,η,p::PolyakovChainModel{SU2,βType}) where {eType,βType}
     trT!(V,U)
     muladd!(V,dt*im*(p.β/2),η)
 end
 
-function f_chain(V::SU3AlgebraFields,U::GaugeFields{SU3,eType},dt,η,p::PolyakovChainModel{SU3,βType}) where {eType,βType}
+function f_chain(V::SU3AlgebraFields,U::GaugeFields_1D{SU3,eType},dt,η,p::PolyakovChainModel{SU3,βType}) where {eType,βType}
     for j in 1:U.NV
 
         M::SU3Matrix = U[j]
@@ -56,11 +56,11 @@ function f_chain(V::SU3AlgebraFields,U::GaugeFields{SU3,eType},dt,η,p::Polyakov
     muladd!(V,im*dt,η)
 end
 
-function observable_chain(U::GaugeFields{SU2,eType},model::PolyakovChainModel{SU2,βType}) where {eType,βType}
+function observable_chain(U::GaugeFields_1D{SU2,eType},model::PolyakovChainModel{SU2,βType}) where {eType,βType}
     return (model.β/2) * tr(U)
 end
 
-function observable_chain(U::GaugeFields{SU3,eType},model::PolyakovChainModel{SU3,βType}) where {eType,βType}
+function observable_chain(U::GaugeFields_1D{SU3,eType},model::PolyakovChainModel{SU3,βType}) where {eType,βType}
     #@unpack β₁, β₂ = model
     return tr(U) #+ β₂*trInv(U)
 end

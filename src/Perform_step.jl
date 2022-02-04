@@ -103,7 +103,7 @@ function adaptive_stepsize!(integrator, cache::Cache; κ = 5e-4, p=2)
     end
 end
 
-function get_dSMax(U::GaugeFields{SU3,eType}, cache::Cache, model::PolyakovChainModel{SU3,βType}) where {eType,βType}
+function get_dSMax(U::GaugeFields_1D{SU3,eType}, cache::Cache, model::PolyakovChainModel{SU3,βType}) where {eType,βType}
 
     @unpack V = cache
 
@@ -128,10 +128,10 @@ function get_dSMax(U::GaugeFields{SU3,eType}, cache::Cache, model::PolyakovChain
     return dSMax
 end
 
-function get_dSMax(U::GaugeFields{SU2,eType},cache::Cache,model::PolyakovChainModel{SU2,βType}) where {eType,βType}
+function get_dSMax(U::GaugeFields_1D{SU2,eType},cache::Cache,model::PolyakovChainModel{SU2,βType}) where {eType,βType}
     
     @unpack V = cache
     
     trT!(V,U)
-    return (model.β/2)*maximum(V.a)
+    return (model.β/2)*maximum(abs.(V.a))
 end

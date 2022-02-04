@@ -66,8 +66,22 @@ function perform_step!(integrator, cache::gθEMCache)
     substitute!(integrator.U,U_tmp)
 end
 
+function adaptive_stepsize_2!(integrator, cache::Cache; ϵ̄ = 1e-3, Kmax=2)
 
+    @unpack U, opts = integrator
+    @unpack model = opts
 
+    dSMax = get_dSMax(U, cache, model)
+    
+    integrator.dt = ϵ̄ * Kmax/dSMax
+end
+
+function calcKMax(integrator, cache::Cache)
+    @unpack U, opts = integrator
+    @unpack model = opts
+
+    return get_dSMax(U, cache, model)
+end
 
 function adaptive_stepsize!(integrator, cache::Cache; κ = 5e-4, p=2)
 

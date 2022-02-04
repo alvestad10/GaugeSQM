@@ -440,7 +440,7 @@ function trT!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields_1D{SU{N},eType}) 
         trT!(view(V.a,:,j),M)
     end
 
-    return V 
+    return nothing
 end
 
 function tr(X::GaugeFields_1D{SU{N},eType}) where {N, eType}
@@ -457,6 +457,15 @@ function trInv(X::GaugeFields_1D{SU{N},eType}) where {N, eType}
         M *= inv(X[i])
     end
     return tr(M)
+end
+
+function unitarity!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields_1D{SU{N},eType}) where {N,aType,eType}
+
+    for j in 1:X.NV
+        M::SUMatrix{N} = X[j]*adjoint(X[j])
+        trT!(view(V.a,:,j),M)
+    end
+    
 end
 
 #=

@@ -32,4 +32,8 @@ mutable struct Integrator{uType, fType, ηType ,S<:Solver,R<:Regulators}
         η = sqrt(2*dt) .* randn(num_of_basis,U.NV)
         new{uType,typeof(f),typeof(η),algType,R}(U,dt,f,η,opts,alg,regs)
     end
+
+    function Integrator(integrator::Integrator{uType,fType,ηType,sType,R}, ff) where {uType,fType,ηType,sType,R}
+        new{uType,typeof(ff),ηType,sType,R}(integrator.U,integrator.dt,ff,integrator.η,integrator.opts,integrator.alg,integrator.Regulators)
+    end
 end

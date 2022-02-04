@@ -44,7 +44,25 @@ function solve(opts::Problem,alg::Solver,regs::Regulators; adaptive=false, ad_κ
         
         integrator = Integrator(U0,dt,opts,alg,regs)
         algCache = get_cache(integrator,alg)
-        regsCache = get_cache(integrator,regs)
+        GCCache = get_cache(integrator,regs.GC)
+
+        old_f = integrator.f
+        
+        
+        if typeof(regs.DS) == DynamicStabilization
+            DSCache = get_cache(integrator,regs.DS)
+            
+            ff(V,U,dt,η) = begin
+                @unpack M = DSCache
+                old_f(V,U,dt,η)
+                
+                get_DynamicStabilization!(M,integrator,DSCache,regs)
+
+                @. V.a += im*dt*M.a
+            end
+            
+            integrator = Integrator(integrator,ff)
+        end 
 
         
         sol[tread,1] = opts.observable(integrator.U)
@@ -74,13 +92,18 @@ function solve(opts::Problem,alg::Solver,regs::Regulators; adaptive=false, ad_κ
                     save_this_round = true
                     prev_save += saveat
                 end
+            else
+                if prev_save + saveat <= t + integrator.dt
+                    save_this_round = true
+                    prev_save += saveat
+                end
             end
 
             num_of_basis = integrator.U.NC > 1 ? integrator.U.NC^2-1 : 1
             integrator.η = sqrt(2*integrator.dt) .* randn(num_of_basis,integrator.U.NV)
             perform_step!(integrator,algCache)
             
-            GaugeCoolingUpdate!(integrator,regsCache)
+            GaugeCoolingUpdate!(integrator,GCCache)
             
             if save_this_round
                 sol[tread,i] = opts.observable(integrator.U)

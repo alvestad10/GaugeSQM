@@ -1,5 +1,6 @@
 export Regulators
-export GaugeCooling, GaugeCoolingAdaptive, NoGaugeCooling, NoDynamicStabilization
+export GaugeCooling, GaugeCoolingAdaptive, NoGaugeCooling
+export DynamicStabilization, NoDynamicStabilization
 export GaugeCoolingUpdate!, adaptiveUpdateGCParameter
 
 ########################
@@ -15,15 +16,54 @@ end
 
 ## Dynamic Stabilization
 struct NoDynamicStabilization <: AbstractDynamicStabilization end
+struct NoDynamicStabilizationCache <: Cache end
+get_cache(integrator,regs::NoDynamicStabilization) = NoDynamicStabilizationCache()
+
+struct DynamicStabilization <: AbstractDynamicStabilization
+    α_DS::Float64
+end
+
+struct DynamicStabilizationCache{T <: SUn,lType} <: Cache
+    b::LieAlgebraFields{T,lType}
+    bb::LieAlgebraFields{T,lType}
+    M::LieAlgebraFields{T,lType}
+end
+
+function get_cache(integrator,regs::DynamicStabilization)
+    @unpack U = integrator
+
+    b = LieAlgebraFields(ComplexF64,U.NC,U.NV)
+    bb = LieAlgebraFields(ComplexF64,U.NC,U.NV)
+    M = LieAlgebraFields(ComplexF64,U.NC,U.NV)
+
+    return DynamicStabilizationCache(b,bb,M)
+end
+
+function get_DynamicStabilization!(M::LieAlgebraFields, integrator, cache::Cache,regs::Regulators{GCType,DynamicStabilization}) where {GCType}
+    @unpack DS = regs 
+    @unpack U = integrator
+    @unpack b,bb = cache
+    
+    unitarity!(b,U)
+    for x in U.NV
+        bb.a[:,x] .= view(b.a,:,x) .*  view(b.a,:,x)
+        M.a[:,x] .= im .* view(b.a,:,x) .* sum(bb.a[:,x])^3
+    end
+
+    @. M.a = im * DS.α_DS * M.a
+end
+
+
+
+
 
 
 ## GaugeCooling
 struct NoGaugeCooling <: AbstractGaugeCooling end
-#struct NoGaugeCoolingCache <: Cache end
+struct NoGaugeCoolingCache <: Cache end
 
 struct NoRegulatorCache <: Cache end
-get_cache(integrator,regs::Regulators{NoGaugeCooling,NoDynamicStabilization}) = NoRegulatorCache()
-#get_cache(integrator,regs::Regulators{NoGaugeCooling,NoDynamicStabilization}) = NoGaugeCoolingCache()
+get_cache(integrator,regs::NoGaugeCooling) = NoGaugeCoolingCache()
 
 struct GaugeCooling <: AbstractGaugeCooling
     α::Float64
@@ -38,7 +78,7 @@ struct GaugeCoolingCache{T <: SUn,eType,lType} <: Cache
     V2::LieAlgebraFields{T,lType}
 end
 
-function get_cache(integrator,regs::Regulators{GaugeCooling,DSType}) where {DSType}
+function get_cache(integrator,regs::GaugeCooling)
     @unpack U = integrator
 
     U2 = similar(U)
@@ -47,7 +87,7 @@ function get_cache(integrator,regs::Regulators{GaugeCooling,DSType}) where {DSTy
     V1 = LieAlgebraFields(ComplexF64,U.NC,U.NV)
     V2 = LieAlgebraFields(ComplexF64,U.NC,U.NV)
 
-    GaugeCoolingCache(U2,U3,U4,V1,V2)
+    return GaugeCoolingCache(U2,U3,U4,V1,V2)
 end
 
 struct GaugeCoolingAdaptive <: AbstractGaugeCooling
@@ -56,7 +96,7 @@ struct GaugeCoolingAdaptive <: AbstractGaugeCooling
     N::Integer
 end
 
-function get_cache(integrator,regs::Regulators{GaugeCoolingAdaptive,DSType}) where {DSType}
+function get_cache(integrator,regs::GaugeCoolingAdaptive)
     @unpack U = integrator
 
     U2 = similar(U)

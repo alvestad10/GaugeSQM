@@ -17,6 +17,7 @@ function perform_step!(integrator, cache::gEMCache)
     mul!(U_tmp,U_tmp2,U)
 
     substitute!(integrator.U,U_tmp)
+    return true
 end
 
 
@@ -55,15 +56,24 @@ function perform_step!(integrator, cache::gθEMCache)
         @. F = x - D.a 
     end
 
-    # Perform the non-linear solve
-    r = nlsolve(g!, r0, method = :anderson)#, autodiff = :forward)
+    try
+        # Perform the non-linear solve
+        r = nlsolve(g!, r0, method = :newton, autodiff = :central)
+        @. V.a = r.zero
+    catch e
+        if isa(e, NLsolve.IsFiniteException)
+            return false
+        else
+            rethrow(e)
+        end
+    end
 
     # Evaluate the expoenential 
-    @. V.a = r.zero
     expiA!(U_tmp2,V)
     mul!(U_tmp,U_tmp2,U)
 
     substitute!(integrator.U,U_tmp)
+    return true
 end
 
 function adaptive_stepsize_2!(integrator, cache::Cache; ϵ̄ = 1e-3, Kmax=2)
@@ -133,5 +143,5 @@ function get_dSMax(U::GaugeFields_1D{SU2,eType},cache::Cache,model::PolyakovChai
     @unpack V = cache
     
     trT!(V,U)
-    return (model.β/2)*maximum(abs.(V.a))
+    return maximum(abs.((model.β/2)*V.a))
 end

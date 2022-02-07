@@ -50,7 +50,7 @@ function get_DynamicStabilization!(M::LieAlgebraFields, integrator, cache::Cache
         M.a[:,x] .= im .* view(b.a,:,x) .* sum(bb.a[:,x])^3
     end
 
-    @. M.a = im * DS.α_DS * M.a
+    @. M.a = -im * DS.α_DS * M.a
 end
 
 

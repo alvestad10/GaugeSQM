@@ -39,6 +39,29 @@ function f_chain(V::SU2AlgebraFields,U::GaugeFields_1D{SU2,eType},dt,η,cache::C
     muladd!(V,dt*im*(p.β/2),η)
 end
 
+function jac_chain(V,U::GaugeFields_1D{SU2,eType},dt,cache::Cache,p::PolyakovChainModel{SU2,βType}) where {eType,βType}
+    @unpack Uinv = cache
+    substitute!(Uinv,U)
+    for i in 1:U.NV
+        for a in 1:U.NC
+            inxi = (i-1)*(U.NC^2-1) + a
+
+            λUi!(Uinv,i,a)
+            for j in 1:U.NV
+
+                M::SU2Matrix = Uinv[j]
+                for k in vcat(j+1:U.NV, 1:j-1)
+                    M *= Uinv[k]
+                end
+                
+                inxj = 1+(j-1)*U.NC
+                trT!(view(V,inxi,inxj:inxj+(U.NC^2-1)-1),-dt*(p.β/2)*M)
+            end
+            Uinv[i] = U[i]
+        end
+    end         
+end
+
 function f_chain(V::SU3AlgebraFields,U::GaugeFields_1D{SU3,eType},dt,η,cache::Cache,p::PolyakovChainModel{SU3,βType}) where {eType,βType}
     
     @unpack Uinv = cache
@@ -99,7 +122,8 @@ function PolyakovChainProblem(sutype::Type{SU{N}},dt,tspan,β,NLinks;NTr=1,κ=0.
     u0 = GaugeSQM.IdentityGauges(N,NLinks)
     
     f(V,U,dt,η,cache) = f_chain(V,U,dt,η,cache,model)
+    j(V,U,dt,cache) = jac_chain(V,U,dt,cache,model)
     observable(U) = observable_chain(U,model)
 
-    return Problem(u0,dt,tspan,model,NTr,f,observable)
+    return Problem(u0,dt,tspan,model,NTr,f,j,observable)
 end

@@ -112,7 +112,19 @@ function inv!(Uinv::GaugeFields_1D{T,eType},U::GaugeFields_1D{T,eType}) where {T
     #end
 end
 
+function Ta(::GaugeFields_1D{SU2,eType},a) where {eType}
+    if a == 1
+        return SU2Matrix(0, 1, -1, 0)
+    elseif a == 2
+        return SU2Matrix(0, im, -im, 0)
+    else a == 3
+        return SU2Matrix(1, 0, 0, -1)
+    end
+end
 
+function λUi!(U::GaugeFields_1D{SU2,eType},i::Integer,a::Integer) where {eType}
+    U[i] = Ta(U,a)*U[i]
+end
 
 
 

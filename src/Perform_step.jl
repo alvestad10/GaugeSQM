@@ -23,12 +23,12 @@ end
 
 
 function perform_step!(integrator, cache::gθEMCache)
-    @unpack dt, U, alg, f, η = integrator
+    @unpack dt, U, alg, f, j, η = integrator
     @unpack U_tmp,U_tmp2, B, D, V, r0 = cache    
     
     # Calculating the initial value
     # for the nlsolver 
-    f(D,U,dt,η)
+    f(D,U,dt,η,cache)
     @. r0 = D.a 
 
     if (1-alg.θ) != 0.
@@ -39,10 +39,11 @@ function perform_step!(integrator, cache::gθEMCache)
         @. B.a = η 
     end
     
+    s = size(r0)
     g!(F,x) = begin                
         
         # Convert to GaugeField
-        @. V.a = x
+        V.a .= reshape(x,s...)
         
         # Prepare to evaluate drift term
         expiA!(U_tmp2,V)
@@ -53,13 +54,32 @@ function perform_step!(integrator, cache::gθEMCache)
         f(D,U_tmp,dt*alg.θ,B,cache)
 
         # We want to minimize F ("Lie alebra vector")
-        @. F = x - D.a 
+        F .= x .- reshape(D.a,:) 
+    end
+
+    j!(J,x) = begin                
+        fill!(J, 0)
+        # Convert to GaugeField
+        V.a .= reshape(x,s...)
+        
+        # Prepare to evaluate drift term
+        expiA!(U_tmp2,V)
+        mul!(U_tmp,U_tmp2,U)
+        
+        # Evaluate drift term according to
+        # the model
+        j(J,U_tmp,dt*alg.θ,cache)
+
+        @inbounds @simd for i in 1:size(J)[1]
+            J[i,i] = 1 - J[i,i]  
+        end
     end
 
     try
         # Perform the non-linear solve
-        r = nlsolve(g!, r0, method = :newton, autodiff = :central)
-        @. V.a = r.zero
+        r = nlsolve(g!, j!, reshape(r0,:), method = :newton)#, autodiff = :central)
+        #r = nlsolve(g!, reshape(r0,:), method = :newton, autodiff = :central)
+        V.a .= reshape(r.zero,s...)
     catch e
         if isa(e, NLsolve.IsFiniteException)
             return false

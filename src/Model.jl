@@ -34,19 +34,25 @@ function f_chain(V::U1AlgebraFields,U::GaugeFields_1D{U1,eType},dt,η,p::Polyako
     muladd!(V,-im*dt,η)
 end
 
-function f_chain(V::SU2AlgebraFields,U::GaugeFields_1D{SU2,eType},dt,η,p::PolyakovChainModel{SU2,βType}) where {eType,βType}
+function f_chain(V::SU2AlgebraFields,U::GaugeFields_1D{SU2,eType},dt,η,cache::Cache,p::PolyakovChainModel{SU2,βType}) where {eType,βType}
     trT!(V,U)
     muladd!(V,dt*im*(p.β/2),η)
 end
 
-function f_chain(V::SU3AlgebraFields,U::GaugeFields_1D{SU3,eType},dt,η,p::PolyakovChainModel{SU3,βType}) where {eType,βType}
+function f_chain(V::SU3AlgebraFields,U::GaugeFields_1D{SU3,eType},dt,η,cache::Cache,p::PolyakovChainModel{SU3,βType}) where {eType,βType}
+    
+    @unpack Uinv = cache
+
+    # Invert the GaugeFields
+    inv!(Uinv,U)
+    
     for j in 1:U.NV
 
         M::SU3Matrix = U[j]
-        MInv::SU3Matrix = inv(U[j])
+        MInv::SU3Matrix = Uinv[j]
         for i in vcat(j+1:U.NV, 1:j-1)
             M *= U[i]
-            MInv = inv(U[i])*MInv
+            MInv = Uinv[i]*MInv
         end
 
 
@@ -92,7 +98,7 @@ function PolyakovChainProblem(sutype::Type{SU{N}},dt,tspan,β,NLinks;NTr=1,κ=0.
     
     u0 = GaugeSQM.IdentityGauges(N,NLinks)
     
-    f(V,U,dt,η) = f_chain(V,U,dt,η,model)
+    f(V,U,dt,η,cache) = f_chain(V,U,dt,η,cache,model)
     observable(U) = observable_chain(U,model)
 
     return Problem(u0,dt,tspan,model,NTr,f,observable)

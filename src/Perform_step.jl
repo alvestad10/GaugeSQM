@@ -10,7 +10,7 @@ function perform_step!(integrator, cache::gEMCache)
     # it inncludes the whole exponential term, also the
     # the noise term, which should be changed when looking into
     # higher-order schemes
-    f(V,U,dt,η)
+    f(V,U,dt,η,cache)
     
     # Generic part of the algorithm not part of the problem    
     expiA!(U_tmp2,V)
@@ -34,7 +34,7 @@ function perform_step!(integrator, cache::gθEMCache)
     if (1-alg.θ) != 0.
         #@. B.a = D.a
         #muladd!(B,dt*p*(1-alg.θ),η)
-        f(B,U,dt*(1-alg.θ),η)
+        f(B,U,dt*(1-alg.θ),η,cache)
     else
         @. B.a = η 
     end
@@ -50,7 +50,7 @@ function perform_step!(integrator, cache::gθEMCache)
         
         # Evaluate drift term according to
         # the model
-        f(D,U_tmp,dt*alg.θ,B)
+        f(D,U_tmp,dt*alg.θ,B,cache)
 
         # We want to minimize F ("Lie alebra vector")
         @. F = x - D.a 

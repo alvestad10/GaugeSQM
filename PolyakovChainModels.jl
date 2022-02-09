@@ -2,24 +2,28 @@ using GaugeSQM
 using Plots
 using Statistics
 
-#prob = GaugeSQM.PolyakovChainProblem(SU2,1e-3,50.,0.5*(1. + sqrt(3)*im),2;NTr=5,κ=0.1,μ=1.)
-prob = GaugeSQM.PolyakovChainProblem(SU3,1e-3,30.,2.,5;NTr=10,κ=0.1,μ=1.)
+#prob = GaugeSQM.PolyakovChainProblem(SU2,1e-3,1.,0.5*(1. + 5*sqrt(3)*im),5;NTr=10)
+prob = GaugeSQM.PolyakovChainProblem(SU3,1e-3,1.,2.,30;NTr=10,κ=0.1,μ=1.)
 
 noRegs = Regulators(NoGaugeCooling(), NoDynamicStabilization())
-regs_E = Regulators(GaugeCooling(0.03,5), NoDynamicStabilization())
-regs_Ad = Regulators(GaugeCoolingAdaptive(1.0,0.8,1), NoDynamicStabilization())
+regs_GC = Regulators(GaugeCooling(1.0,1), NoDynamicStabilization())
+regs_GCAD = Regulators(GaugeCoolingAdaptive(1.0,0.8,10), NoDynamicStabilization())
 
-regs_I = Regulators(GaugeCooling(0.03,5), NoDynamicStabilization())
-regs_I_Ad = Regulators(GaugeCoolingAdaptive(1.0,0.8,1), NoDynamicStabilization())
+#regs_I = Regulators(GaugeCooling(0.03,5), NoDynamicStabilization())
+#regs_I_Ad = Regulators(GaugeCoolingAdaptive(1.0,0.8,1), NoDynamicStabilization())
 
-saveat = 0.005
+DSRegs = Regulators(GaugeCoolingAdaptive(1.0,0.8,1), DynamicStabilization(1.0))
+
+saveat = 0.01
 @time sol_E = solve(prob,gEM(),noRegs)
-@time sol_E_GC = solve(prob,gEM(),regs_E; adaptive=true, saveat=saveat)
-@time sol_E_GCAD = solve(prob,gEM(),regs_Ad; adaptive=false, ad_κ=3e-3, ad_p=2)
+@time sol_E_DS = solve(prob,gEM(),DSRegs,adaptive=true,saveat=saveat)
+@time sol_E_GC = solve(prob,gEM(),regs_GC; adaptive=true, saveat=saveat)
+@time sol_E_GCAD = solve(prob,gEM(),regs_GCAD; adaptive=false, saveat=saveat)
 
 @time sol_I = solve(prob,gθEM(1.0),noRegs)
-@time sol_I_GC = solve(prob,gθEM(0.5),regs_I; adaptive=true,saveat=saveat)
-@time sol_I_GC_AD = solve(prob,gθEM(0.5),regs_I_Ad; adaptive=false, ad_κ=1e-3, ad_p=2)
+@time sol_I_DS = solve(prob,gθEM(1.0),DSRegs,adaptive=true,saveat=saveat)
+@time sol_I_GC = solve(prob,gθEM(1.0),regs_GC; adaptive=true,saveat=saveat)
+@time sol_I_GCAD = solve(prob,gθEM(1.0),regs_GCAD; adaptive=false, saveat=saveat)
 
 dts = Float64[]
 ### Why adaptive stepsize is worse for implicit scheme?
@@ -36,20 +40,22 @@ plot!(fig,dts_I)
 end
 
 termTime = 1 
-sol_E = reshape(sol_E[:,floor(Int64,1/prob.dt)*termTime:end],:)
-sol_E_GC = reshape(sol_E_GC[:,floor(Int64,1/prob.dt)*termTime:end],:)#[1:10:end]
-sol_E_GCAD = reshape(sol_E_GCAD[:,floor(Int64,1/prob.dt)*termTime:end],:)#[1:10:end]
+sol_E = reshape(sol_E[:,floor(Int64,1/saveat)*termTime:end],:)
+sol_E_DS = reshape(sol_E_DS[:,floor(Int64,1/saveat)*termTime:end],:)
+sol_E_GC = reshape(sol_E_GC[:,floor(Int64,1/saveat)*termTime:end],:)#[1:10:end]
+sol_E_GCAD = reshape(sol_E_GCAD[:,floor(Int64,1/saveat)*termTime:end],:)#[1:10:end]
 sol_E = sol_E[abs.(real(sol_E)) .< 1e6]
 sol_E = sol_E[abs.(imag(sol_E)) .< 1e6]
-sol_E_GC = sol_E_GC[abs.(real(sol_E_GC)) .< 1e6]
-sol_E_GC = sol_E_GC[abs.(imag(sol_E_GC)) .< 1e6]
+sol_E_GC = sol_E_GC[abs.(real(sol_E_GC)) .< 1e10]
+sol_E_GC = sol_E_GC[abs.(imag(sol_E_GC)) .< 1e10]
 sol_E_GCAD = sol_E_GCAD[abs.(real(sol_E_GCAD)) .< 1e6]
 sol_E_GCAD = sol_E_GCAD[abs.(imag(sol_E_GCAD)) .< 1e6]
 
 
-sol_I = reshape(sol_I[:,floor(Int64,1/prob.dt)*termTime:end],:)
-sol_I_GC = reshape(sol_I_GC[:,floor(Int64,1/prob.dt)*termTime:end],:)
-sol_I_GC_AD = reshape(sol_I_GC_AD[:,floor(Int64,1/prob.dt)*termTime:end],:)
+sol_I = reshape(sol_I[:,floor(Int64,1/saveat)*termTime:end],:)
+sol_I_DS = reshape(sol_I_DS[:,floor(Int64,1/saveat)*termTime:end],:)
+sol_I_GC = reshape(sol_I_GC[:,floor(Int64,1/saveat)*termTime:end],:)
+sol_I_GCAD = reshape(sol_I_GCAD[:,floor(Int64,1/saveat)*termTime:end],:)
 
 begin
 ylim = [-10,10] 
@@ -97,12 +103,38 @@ begin
 end
 
 begin
-    ylim = [-20,20] 
+    ylim = [-50,50] 
     
     plot(real(sol_I_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_I_GC)),ylim=[1e-3,10],yaxis=:log,label="Implicit Re GC")
     plot!(imag(sol_I_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_I_GC)),ylim=[1e-3,10],yaxis=:log,label="Implicit Im GC")
     plot!(real(sol_E_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_E_GC)),ylim=[1e-3,10],yaxis=:log,label="Explicit Re GC")
     plot!(imag(sol_E_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_E_GC)),ylim=[1e-3,10],yaxis=:log,label="Explicit Im GC")
+end
+
+begin
+    ylim = [-20,20] 
+    
+    plot(real(sol_I_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_I_DS)),ylim=[1e-3,10],yaxis=:log,label="Implicit Re DS")
+    plot!(imag(sol_I_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_I_DS)),ylim=[1e-3,10],yaxis=:log,label="Implicit Im DS")
+    plot!(real(sol_E_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_E_DS)),ylim=[1e-3,10],yaxis=:log,label="Explicit Re DS")
+    plot!(imag(sol_E_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_E_DS)),ylim=[1e-3,10],yaxis=:log,label="Explicit Im DS")
+end
+
+begin
+    ylim = [-5,5] 
+    
+    plot(real(sol_E_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_E_DS)),ylim=[1e-3,10],yaxis=:log,label="Explicit Re DS")
+    plot!(imag(sol_E_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_E_DS)),ylim=[1e-3,10],yaxis=:log,label="Explicit Im DS")
+    plot!(real(sol_E_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_E_GC)),ylim=[1e-3,10],yaxis=:log,label="Explicit Re GC")
+    plot!(imag(sol_E_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_E_GC)),ylim=[1e-3,10],yaxis=:log,label="Explicit Im GC")
+    plot!(real(sol_E_GCAD),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_E_GCAD)),ylim=[1e-3,10],yaxis=:log,label="Explicit Re GCAD")
+    plot!(imag(sol_E_GCAD),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_E_GCAD)),ylim=[1e-3,10],yaxis=:log,label="Explicit Im GCAD")
+    plot!(real(sol_I_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_I_DS)),ylim=[1e-3,10],yaxis=:log,label="Implicit Re DS")
+    plot!(imag(sol_I_DS),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_I_DS)),ylim=[1e-3,10],yaxis=:log,label="Implicit Im DS")
+    plot!(real(sol_I_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_I_GC)),ylim=[1e-3,10],yaxis=:log,label="Implicit Re GC")
+    plot!(imag(sol_I_GC),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_I_GC)),ylim=[1e-3,10],yaxis=:log,label="Implicit Im GC")
+    plot!(real(sol_I_GCAD),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(real(sol_I_GCAD)),ylim=[1e-3,10],yaxis=:log,label="Implicit Re GC")
+    plot!(imag(sol_I_GCAD),xlim=ylim,seriestype=:stephist, norm=true,bins=GaugeSQM.get_nr_bins(imag(sol_I_GCAD)),ylim=[1e-3,10],yaxis=:log,label="Implicit Im GC")
 end
 
 

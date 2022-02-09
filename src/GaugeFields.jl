@@ -105,6 +105,13 @@ function LinearAlgebra.mul!(c::GaugeFields_1D{T,eType},a::GaugeFields_1D{T,eType
     return
 end
 
+function inv!(Uinv::GaugeFields_1D{T,eType},U::GaugeFields_1D{T,eType}) where {T <: SUn, eType}
+    @. Uinv.g = inv(U.g)
+    #@inbounds for j in 1:U.NV
+    #    Uinv[j] = inv(U[j]) 
+    #end
+end
+
 
 
 

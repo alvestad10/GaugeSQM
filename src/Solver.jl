@@ -15,6 +15,7 @@ struct gEMCache{T <: SUn,eType,lType} <: Cache
     U_tmp::GaugeFields_1D{T,eType}
     U_tmp2::GaugeFields_1D{T,eType}
     V::LieAlgebraFields{T,lType}
+    Uinv::GaugeFields_1D{T,eType}
 end
 
 function get_cache(integrator,alg::gEM)
@@ -23,8 +24,9 @@ function get_cache(integrator,alg::gEM)
     U_tmp = similar(U)
     U_tmp2 = similar(U)
     V = LieAlgebraFields(ComplexF64,U.NC,U.NV)
+    Uinv = similar(U)
 
-    gEMCache(U_tmp,U_tmp2,V)    
+    gEMCache(U_tmp,U_tmp2,V,Uinv)    
 end
 
 """
@@ -45,6 +47,7 @@ struct gθEMCache{T <: SUn,eType,lType,r0Type} <: Cache
     D::LieAlgebraFields{T,lType}
     V::LieAlgebraFields{T,lType}
     r0::r0Type
+    Uinv::GaugeFields_1D{T,eType}
 end
 
 function get_cache(integrator,alg::gθEM)
@@ -55,11 +58,12 @@ function get_cache(integrator,alg::gθEM)
     V = LieAlgebraFields(ComplexF64,U.NC,U.NV)
     B = LieAlgebraFields(ComplexF64,U.NC,U.NV)
     D = LieAlgebraFields(ComplexF64,U.NC,U.NV)
+    Uinv = similar(U)
     
     r0 = D.a
     #r0 = zeros(Float64,2*(U.NC^2-1),U.NV)
 
-    gθEMCache(U_tmp,U_tmp2,V,B,D,r0)    
+    gθEMCache(U_tmp,U_tmp2,V,B,D,r0,Uinv)    
 end
 
 """

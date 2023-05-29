@@ -128,3 +128,7 @@ function PolyakovChainProblem(sutype::Type{SU{N}},dt,tspan,β,NLinks;NTr=1,κ=0.
 
     return Problem(u0,dt,tspan,model,NTr,f,j,observable)
 end
+
+function PolyakovChainProblem(sutype::Type{SU{N}};dt=1e-3,tspan=10.,β=2.0,NLinks=1,NTr=1,κ=0.,μ=0.) where N
+    PolyakovChainProblem(sutype,dt,tspan,β,NLinks;NTr=NTr,κ=κ,μ=μ)
+end

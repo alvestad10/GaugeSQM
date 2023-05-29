@@ -39,8 +39,8 @@ function solve(opts::Problem,alg::Solver,regs::Regulators; adaptive=false, ad_κ
     
 
 
-    Threads.@threads for tread in 1:NTr
-    #for tread in 1:NTr
+    #Threads.@threads for tread in 1:NTr
+    for tread in 1:NTr
         
         integrator = Integrator(U0,dt,opts,alg,regs)
         algCache = get_cache(integrator,alg)
@@ -52,9 +52,9 @@ function solve(opts::Problem,alg::Solver,regs::Regulators; adaptive=false, ad_κ
         if typeof(regs.DS) == DynamicStabilization
             DSCache = get_cache(integrator,regs.DS)
             
-            ff(V,U,dt,η) = begin
+            function ff(V,U,dt,η,cache)
                 @unpack M = DSCache
-                old_f(V,U,dt,η)
+                old_f(V,U,dt,η,cache)
                 
                 get_DynamicStabilization!(M,integrator,DSCache,regs)
 

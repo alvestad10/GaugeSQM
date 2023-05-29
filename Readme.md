@@ -110,11 +110,13 @@ end
 
 In this example we add adaptive stepsize and compare with and without gauge cooling, where the implicit scheme is without gauge cooling and the explicit is with gauge cooling;
 
+TODO: Fix bug where DS failes
+
 ```julia
 using GaugeSQM
 using Plots
 
-prob = GaugeSQM.PolyakovChainProblem(SU2;dt=1e-3,tspan=30.,β = 0.5*(1. + sqrt(3)*im), NLinks = 30, NTr=1)
+prob = GaugeSQM.PolyakovChainProblem(SU2;dt=1e-3,tspan=30.,β = 0.5*(1. + sqrt(3)*im), NLinks = 30, NTr=10)
 
 noRegs = Regulators(NoGaugeCooling(), NoDynamicStabilization())
 regs_GC = Regulators(GaugeCooling(1.0,10), NoDynamicStabilization())
@@ -128,25 +130,26 @@ termTime = 2; saveat=1e-2
 @time sol_E_GC = solve(prob,gEM(),regs_GC,saveat=saveat)
 @time sol_E_GCAD = solve(prob,gEM(),regs_GCAD,saveat=saveat)
 @time sol_E_GC_DS = solve(prob,gEM(),regs_GC_DS,saveat=saveat)
-@time sol_E_DS = solve(prob,gEM(),regs_DS,saveat=saveat)
+@time sol_I_DS = solve(prob,gθEM(1.0),regs_DS,saveat=saveat)
 sol_I = reshape(sol_I[:,floor(Int64,1/saveat)*termTime:end],:)
 sol_E_GC = reshape(sol_E_GC[:,floor(Int64,1/saveat)*termTime:end],:)
 sol_E_GCAD = reshape(sol_E_GCAD[:,floor(Int64,1/saveat)*termTime:end],:)
 sol_E_GC_DS = reshape(sol_E_GC_DS[:,floor(Int64,1/saveat)*termTime:end],:)
-sol_E_DS = reshape(sol_E_DS[:,floor(Int64,1/saveat)*termTime:end],:)
+sol_I_DS = reshape(sol_I_DS[:,floor(Int64,1/saveat)*termTime:end],:)
 
 # We do a check if any trajectories have diverges or failed, then we get nan, 0 or a large number.
 begin
     _sol_I = sol_I[isnan.(sol_I) .!= 1 .&& abs.(sol_I) .< 100 .&& abs.(sol_I) .!= 0.]
     _sol_E_GC = sol_E_GC[isnan.(sol_E_GC) .!= 1 .&& abs.(sol_E_GC) .< 100 .&& abs.(sol_E_GC) .!= 0.]
     _sol_E_GCAD = sol_E_GCAD[isnan.(sol_E_GCAD) .!= 1 .&& abs.(sol_E_GCAD) .< 100 .&& abs.(sol_E_GCAD) .!= 0.]
-    _sol_E_GCAD = sol_E_GC_DS[isnan.(sol_E_GC_DS) .!= 1 .&& abs.(sol_E_GC_DS) .< 100 .&& abs.(sol_E_GE_DS) .!= 0.]
+    _sol_E_GC_DS = sol_E_GC_DS[isnan.(sol_E_GC_DS) .!= 1 .&& abs.(sol_E_GC_DS) .< 100 .&& abs.(sol_E_GC_DS) .!= 0.]
+    _sol_I_DS = sol_I_DS[isnan.(sol_I_DS) .!= 1 .&& abs.(sol_I_DS) .< 100 .&& abs.(sol_I_DS) .!= 0.]
     NI = length(_sol_I)/length(sol_I)
     NE_GC = length(_sol_E_GC)/length(sol_E_GC)
     NE_GCAD = length(_sol_E_GCAD)/length(sol_E_GCAD)
     NE_GC_DS = length(_sol_E_GC_DS)/length(sol_E_GC_DS)
-    NE_DS = length(_sol_E_DS)/length(sol_E_DS)
-    @info "Implicit: $NI ratio of events expected, \n Explicit with GC: $NE_GC ratio of events expected, \n Explicit with adaptive GC: $NE_GCAD ratio of events expected, \n Explicit with adaptive GC and DS: $NE_GC_DS ratio of events expected, \n Explicit with DS: $NE_DS ratio of events expected" 
+    NE_DS = length(_sol_I_DS)/length(sol_I_DS)
+    @info "Implicit: $NI ratio of events expected, \n Explicit with GC: $NE_GC ratio of events expected, \n Explicit with adaptive GC: $NE_GCAD ratio of events expected, \n Explicit with adaptive GC and DS: $NE_GC_DS ratio of events expected, \n Implicit with DS: $NE_DS ratio of events expected" 
     
     fig = plot(;xlim=[-5,5],ylim=[1e-3,10],yaxis=:log)
     plot!(fig,real(_sol_I),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(real(_sol_I)),label="Implicit Re")
@@ -155,7 +158,9 @@ begin
     plot!(fig,imag(_sol_E_GC),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(imag(_sol_E_GC)),label="Explicit GC Im")
     plot!(fig,real(_sol_E_GCAD),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(real(_sol_E_GCAD)),label="Explicit GCAD Re")
     plot!(fig,imag(_sol_E_GCAD),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(imag(_sol_E_GCAD)),label="Explicit GCAD Im")
-    plot!(fig,real(_sol_E_GC_DS),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(real(_sol_E_GC_DS)),label="Explicit GCAD Re")
-    plot!(fig,imag(_sol_E_GC_DS),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(imag(_sol_E_GC_DS)),label="Explicit GCAD Im")
+    plot!(fig,real(_sol_E_GC_DS),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(real(_sol_E_GC_DS)),label="Explicit GCAD DS Re")
+    plot!(fig,imag(_sol_E_GC_DS),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(imag(_sol_E_GC_DS)),label="Explicit GCAD DS Im")
+    plot!(fig,real(_sol_I_DS),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(real(_sol_I_DS)),label="Implciit DS Re")
+    plot!(fig,imag(_sol_I_DS),seriestype=:stephist, norm=true, bins=GaugeSQM.get_nr_bins(imag(_sol_I_DS)),label="Implicit DS Im")
 end
 ```

@@ -77,7 +77,7 @@ function perform_step!(integrator, cache::gθEMCache)
 
     try
         # Perform the non-linear solve
-        r = nlsolve(g!, j!, reshape(r0,:), method = :newton)#, autodiff = :central)
+        r = nlsolve(g!, j!, reshape(r0,:), method = :anderson,xtol=0,ftol=1e-6,iterations=20000)#, autodiff = :central)
         #r = nlsolve(g!, reshape(r0,:), method = :newton, autodiff = :central)
         V.a .= reshape(r.zero,s...)
     catch e

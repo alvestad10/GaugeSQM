@@ -1,11 +1,11 @@
 
 
-# KernelCL.jl
+# GaugeSQM.jl
 <!---
 [![DOI](https://zenodo.org/badge/552342814.svg)](https://zenodo.org/badge/latestdoi/552342814)
 -->
 
-To run the code you need a version of Julia installed, then you can make separate scripts or follow the AHO.jl file which can be run in bash using `julia --project=. PolyakovChainModels.jl` or line by line using the Julia vscode extension. Before you run the code follow the Instantite section below to setup the necessary packages.
+To run the code you need a version of Julia installed, then you can make separate script, and run it as `julia --project=. script.jl` (add -t X if more than one trajectory is run as this will parallelize the rund, X is the number of threads) or line by line using the Julia vscode extension. Before you run the code follow the Instantite section below to setup the necessary packages.
 
 ## Instantiate
 

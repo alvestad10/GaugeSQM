@@ -478,7 +478,7 @@ function trInv(X::GaugeFields_1D{SU{N},eType}) where {N, eType}
     return tr(M)
 end
 
-function unitarity!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields_1D{SU{N},eType}) where {N,aType,eType}
+function b!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields_1D{SU{N},eType}) where {N,aType,eType}
 
     for j in 1:X.NV
         M::SUMatrix{N} = X[j]*adjoint(X[j])

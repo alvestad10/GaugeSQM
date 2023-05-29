@@ -44,7 +44,7 @@ function get_DynamicStabilization!(M::LieAlgebraFields, integrator, cache::Cache
     @unpack U = integrator
     @unpack b,bb = cache
     
-    unitarity!(b,U)
+    b!(b,U)
     for x in U.NV
         bb.a[:,x] .= view(b.a,:,x) .*  view(b.a,:,x)
         M.a[:,x] .= im .* view(b.a,:,x) .* sum(bb.a[:,x])^3

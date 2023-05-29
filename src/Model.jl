@@ -87,6 +87,7 @@ end
 
 function observable_chain(U::GaugeFields_1D{SU2,eType},model::PolyakovChainModel{SU2,βType}) where {eType,βType}
     return (model.β/2) * tr(U)
+    #return unitarity_norm(U)
 end
 
 function observable_chain(U::GaugeFields_1D{SU3,eType},model::PolyakovChainModel{SU3,βType}) where {eType,βType}

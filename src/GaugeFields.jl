@@ -487,6 +487,14 @@ function b!(V::LieAlgebraFields{SU{N},aType}, X::GaugeFields_1D{SU{N},eType}) wh
     
 end
 
+function unitarity_norm(X::GaugeFields_1D{SU{N},eType}) where {N,eType}
+    s = 0
+    for i in 1:U.NV
+        s += (1/N) * tr(X[i]*adjoint(X[i])) - 1
+    end
+    return s/U.NV
+end
+
 #=
 
 

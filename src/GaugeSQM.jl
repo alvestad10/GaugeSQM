@@ -102,7 +102,7 @@ function solve(opts::Problem,alg::Solver,regs::Regulators; adaptive=false, ad_κ
             num_of_basis = integrator.U.NC > 1 ? integrator.U.NC^2-1 : 1
             integrator.η = sqrt(2*integrator.dt) .* randn(num_of_basis,integrator.U.NV)
             if !perform_step!(integrator,algCache)
-                @warn "NLSolver failes to converge, use smaller dt"
+                @warn "NLSolver failes to converge at t=$t, use smaller dt"
                 break
             end
             
